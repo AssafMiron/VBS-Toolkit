@@ -1,0 +1,1074 @@
+<?xml version="1.0"?>
+
+<package>
+
+<component id="ToolKit.AssafM.WSC">
+
+  <comment>
+    This component enables scripts to call procedures That are 
+    relevant for Remote and Local Computer Registry, Event Log Access
+    and Service Status.
+    Log File Writing, WMI Access, AD Object Find.
+  </comment>
+
+<?component error="true" debug="true"?>
+
+<registration
+  description="Assaf Miron's ToolKit Component"
+  progid="ToolKit.AssafM.WSC"
+  version="1.00"
+  classid="{052cb1e5-6b17-4f5c-abed-9c3f7e2cc31b}"
+  remotable="True">
+
+  <script language="VBScript">
+  <![CDATA[
+
+    strComponent = "Assaf Miron's ToolKit Component"
+
+'******************************************************************************
+
+    Function Register
+      MsgBox strComponent & " - Windows Script Component registered."
+    End Function
+
+'******************************************************************************
+
+    Function Unregister
+      MsgBox strComponent & " - Windows Script Component unregistered."
+    End Function
+
+'******************************************************************************
+
+  ]]>
+  </script>
+
+</registration>
+
+<public>
+  <method name="WriteTextFile">
+    <parameter name="strFileName"/>
+    <parameter name="strOutput"/>
+    <parameter name="blnWriteEmptyLines"/>
+  </method>
+  
+  <method name="RunLocalCommand">
+    <parameter name="strCommand"/>
+  </method>
+  
+  <method name="RunRemoteCommand">
+    <parameter name="strComputer"/>
+    <parameter name="strCommand"/>
+  </method>  
+
+  <method name="GetServiceStatus">
+    <parameter name="strComputer"/>
+    <parameter name="strService"/>
+  </method>
+  
+  <method name="WMIDateStringToDate">
+    <parameter name="dtmEventDate"/>
+  </method>  
+  
+  <method name="GetEvents">
+    <parameter name="strComputer"/>
+    <parameter name="dStartDate"/>
+    <parameter name="dEndDate"/>
+    <parameter name="arrEventIDs"/>
+    <parameter name="evtLogName"/>
+    <parameter name="blnGetDistinct"/>
+  </method>  
+   
+  <method name="CheckWMIAccess">
+    <parameter name="strComputer"/>
+  </method>      
+
+  <method name="FindADObject">
+    <parameter name="strObj"/>
+    <parameter name="ObjClass"/>
+    <parameter name="objSearchCat"/>
+  </method>  
+
+  <method name="CheckADPathName">
+    <parameter name="strADPath"/>
+  </method>        
+
+  <method name="getEnvPath">
+    <parameter name="strEnv"/>
+  </method>          
+
+  <method name="SendMail">
+    <parameter name="ToAddress"/>
+    <parameter name="CCAddress"/>
+    <parameter name="BCCAddress"/>
+    <parameter name="MessageSubject"/>
+    <parameter name="MessageBody"/>
+    <parameter name="AttachmentPath"/>
+    <parameter name="blnSend"/>
+    <parameter name="blnDisplay"/>
+  </method>          
+
+  <method name="GetWMICollectionItem">
+    <parameter name="strComputer"/>
+    <parameter name="strWMIQuery"/>
+  </method>          
+
+  <method name="RegReadRemoteValue">
+    <parameter name="strComputer"/>
+    <parameter name="strValuePath"/>
+  </method>              
+  
+  <method name="RegKeyExsists">
+    <parameter name="strComputer"/>
+    <parameter name="strKeyPath"/>
+  </method>    
+  
+  <method name="RegValueExsists">
+    <parameter name="strComputer"/>
+    <parameter name="strValuePath"/>
+  </method>      
+    
+  <method name="RegWriteRemoteValue">
+    <parameter name="strComputer"/>
+    <parameter name="strValuePath"/>
+    <parameter name="strValueData"/>
+    <parameter name="strValueType"/>        
+  </method>    
+  
+  <method name="RegReadLocalValue">
+    <parameter name="strValuePath"/>
+  </method>                
+      
+  <method name="RegWriteLocalValue">
+    <parameter name="strValuePath"/>
+    <parameter name="strValueData"/>
+    <parameter name="strValueType"/>        
+  </method>    
+  
+</public>
+
+<private>
+  <method name="ReadNDelete">
+    <parameter name="strPath"/>
+  </method>  
+
+  <method name="RegExFind">
+    <parameter name="strText"/>
+    <parameter name="strPattern"/>
+  </method>    
+
+  <method name="fFormat2Digits">
+    <parameter name="strNum"/>
+  </method>    
+
+  <method name="strToRegConst">
+    <parameter name="strRegConst"/>
+  </method>       
+
+  <method name="ReadValue">
+    <parameter name="objReg"/>
+    <parameter name="lngHive"/>
+    <parameter name="strSubKey"/>
+    <parameter name="strValueName"/>
+    <parameter name="lngValueType"/>
+    <parameter name="vntValueData"/>    
+  </method>       
+
+  <method name="WriteValue">
+    <parameter name="objReg"/>
+    <parameter name="lngHive"/>
+    <parameter name="strSubKey"/>
+    <parameter name="strValueName"/>
+    <parameter name="lngValueType"/>
+    <parameter name="vntValueData"/>
+  </method>           
+
+  <method name="KeyExists">
+    <parameter name="objReg"/>
+    <parameter name="lngHive"/>
+    <parameter name="strSubKey"/>
+    <parameter name="strKeyName"/>
+  </method>           
+
+  <method name="ValueExists">
+    <parameter name="objReg"/>
+    <parameter name="lngHive"/>
+    <parameter name="strSubKey"/>
+    <parameter name="strValueName"/>
+  </method>               
+</private>
+
+<script language="VBScript">
+<![CDATA[
+
+' *-*-*-*-*-*-*-*-*-*
+' Constsnts
+' *-*-*-*-*-*-*-*-*-*
+
+' StdRegProv Constants
+'-------------------------------
+  Const HKEY_CLASSES_ROOT  = &H80000000
+  Const HKEY_CURRENT_USER  = &H80000001
+  Const HKEY_LOCAL_MACHINE = &H80000002
+  Const HKEY_USERS  		 = &H80000003
+  Const REG_SZ            = 1
+  Const REG_EXPAND_SZ     = 2
+  Const REG_BINARY        = 3
+  Const REG_DWORD         = 4
+  Const REG_MULTI_SZ      = 7
+
+' File Constants
+'---------------------------------
+	Const FOR_READING = 1
+	Const FOR_WRITING = 2
+	Const FOR_APPENDING = 8
+
+' Service Constants
+'----------------------------
+	Const ADS_SERVICE_STOPPED = 1
+	Const ADS_SERVICE_START_PENDING = 2
+	Const ADS_SERVICE_STOP_PENDING = 3
+	Const ADS_SERVICE_RUNNING = 4
+	Const ADS_SERVICE_CONTINUE_PENDING = 5
+	Const ADS_SERVICE_PAUSE_PENDING = 6
+	Const ADS_SERVICE_PAUSED = 7
+	Const ADS_SERVICE_ERROR = 8
+
+' *-*-*-*-*-*-*-*-*-*
+' Public Functions
+' *-*-*-*-*-*-*-*-*-*
+
+'******************************************************************************
+' Description	: Converts String Environment Constants to the Environment Path Requested
+' Input			: String Environment Path Enclosed in %<ENV_PATH>%
+' Output		: The Environment Real Path
+Function getEnvPath(strEnv)
+	Dim WshShell
+	Dim objRegEx
+	Dim colMatches
+	Dim strMatch, strNewPath
+	Set WshShell = CreateObject("WScript.Shell")
+	' Check Input For Environments Constants
+	Set objRegEx = CreateObject("VBScript.RegExp")
+	objRegEx.Global = True   
+	objRegEx.Pattern = "%(.*)%"
+	Set colMatches = objRegEx.Execute(strEnv)
+	
+	' Check that The Path Contains Env Consts	
+	If colMatches.Count > 0 Then
+	    For Each strMatch in colMatches
+	    	strEnv = Replace(strEnv,strMatch,WshShell.ExpandEnvironmentStrings(strMatch))
+	   	Next
+	Else
+		' Return The Path Unchanged
+	End If
+	' Clean Up
+	Set objRegEx = Nothing	
+	Set WshShell = Nothing	
+	getEnvPath = strEnv
+End Function
+
+'******************************************************************************
+' Description	: Write appended data to text file.
+'				  Creates the File if it Does Not Exsits.
+' Input			: File Path, Output Text, (Boolean) Write One Empty Line?
+' Output		: Append the Output Text to the Log File
+Sub WriteTextFile(strFileName, strOutput, blnWriteEmptyLines)
+	Dim objFSO, objTextStream
+	'Open text file for output.
+	Set objFSO = CreateObject("Scripting.FileSystemObject")
+	' Check if the File Exists - Append it
+	If objFSO.FileExists(strFileName) Then
+	  Set objTextStream = objFSO.OpenTextFile(strFileName, FOR_APPENDING)
+	Else ' File does not Exists - Create it
+	  Set objTextStream = objFSO.CreateTextFile(strFileName)
+	End If
+	
+	'Write data to file.
+	objTextStream.WriteLine "[" & Now & "]" & vbTab & strOutput
+	If blnWriteEmptyLines Then
+		' Write an Empty line
+		objTextStream.WriteBlankLines(1)
+	End If
+	' Close the File for Editing
+	objTextStream.Close
+	' Clean Up
+	Set objTextStream = Nothing
+	Set objFSO = Nothing
+End Sub
+
+'******************************************************************************
+' Description	: This Function Checks the Service State and returns it
+' Input			: Computer Name, Service Name
+' Output		: Service Status
+Function GetServiceStatus (strComputer, strService)
+	Dim cp 'As IADsComputer
+	Dim sr 'As IADsService
+	Dim so 'As IADsServiceOperations
+	Dim strSvcState
+	' Connect to the Computer
+	Set cp = GetObject("WinNT://" & strComputer & ",computer")
+	' Bind to the Service
+	Set sr = cp.GetObject("Service", strService)
+	' Bid to the Service Operations
+	Set so = sr
+
+	' Get the Service Status
+	Select Case so.Status
+	    Case ADS_SERVICE_STOPPED
+	      strSvcState = "Stopped"
+	    Case ADS_SERVICE_RUNNING
+	        strSvcState = "Running"
+	    Case ADS_SERVICE_PAUSED
+	        strSvcState = "Paused"
+	    Case ADS_SERVICE_ERROR
+	        strSvcState = "Errors"
+	End Select	    
+	' Return the Service State
+	GetServiceStatus = strSvcState 
+End Function
+
+
+'******************************************************************************
+' Description   : Runs a command in the Windows Shelll and Returns its Output
+' Input         : Command String
+' Output        : The Command Output as seen on Windows Shell (CMD)
+Function RunLocalCommand(strCommand)
+    'On Error Resume Next
+    Dim objShell, objWshScriptExec, objStdOut
+    Dim intRes
+    Set objShell = CreateObject("WScript.Shell")
+    ' Run The Command With Run - Get error Code
+    intRes = objShell.Run("cmd /c " & strCommand & " >> C:\tmp.txt", 0, 1)
+    If intRes = 0 Then
+    	' Get the Text From the File and Delete it
+        RunCommand = ReadNDelete("C:\tmp.txt")
+    Else
+    	RunCommand = intRes ' Return the Error Code
+    End If
+End Function
+
+'******************************************************************************
+' Description	:  This Function Runs a Remote Command Using WMI on a Remote Computer
+' Input			: Computer Name, Command to Run
+' Output		: Process ID of the Command
+Function RunRemoteCommand(strComputer,strCommand)
+	Dim objWMIProcess
+	Dim intProcessID
+	' Bind to the WMI Process Name Spaec
+	Set objWMIProcess = GetObject("winmgmts:" _
+	      & "{impersonationLevel=impersonate}!\\" & strComputer & "\root\cimv2:Win32_Process")
+	Err = objWMIProcess.Create("cmd /c " & Command, null, null, intProcessID)
+	' Check the Error Number
+	If Err.Number = 0 Then
+		' No Error - Return the Process ID
+		RunCommand = intProcessID
+	Else
+		' Process Could not Run - Return Error
+		RunCommand = -1
+	End If
+End Function
+
+'******************************************************************************
+' Description	: Connects to the WMI Service and Runs a Query
+' Input			: Computer to Connect to, Blank or '.' are considerd a Local Computer
+'				  A WMI Query to get Results from
+' Output		: The Collection Returned from the WMI Query
+Function GetWMICollectionItem(strComputer, strWMIQuery)
+On Error Resume Next
+	Dim objWMIService
+	' Check if the Connection is to a Local or Remote Computer	
+	If strComputer = "" Or strComputer = "." Then	
+		' Connect to the WMI Service in the Local Computer
+		Set objWMIService = GetObject("winmgmts:root\cimv2")
+	Else
+		' Connect to the WMI Service in the Input Computer Name
+		Set objWMIService = GetObject("winmgmts:{impersonationLevel=impersonate,(Security)}!\\" & strComputer & "\root\cimv2")
+	End If
+	' Return the Query Results
+	Set GetWMICollectionItem = objWMIService.ExecQuery(strWMIQuery)
+	' Clean up
+	Set objWMIService = Nothing
+End Function
+
+'******************************************************************************
+' Description	: This Function Converts the WMI Date time Format to Normal Date Time
+' Input			: WMI Date Time
+' Output		: Normal Date Time
+Function WMIDateStringToDate(dtmEventDate)
+    WMIDateStringToDate = CDate(Mid(dtmEventDate, 5, 2) & "/" & _
+        Mid(dtmEventDate, 7, 2) & "/" & Left(dtmEventDate, 4) _
+            & " " & Mid (dtmEventDate, 9, 2) & ":" & _
+                Mid(dtmEventDate, 11, 2) & ":" & Mid(dtmEventDate, _
+                    13, 2))
+End Function
+
+'******************************************************************************
+' Description   : Checks WMI Access on a Computer
+' Input         : Computer Name
+' Output        : Enum of WMI Access
+' 				0 - No Problems with WMI Access
+'				1 - No Permissions
+' 				2 - No Such Computer
+'				3 - WMI Error
+Function CheckWMIAccess(strComputer)
+	On Error Resume Next
+	Err = 0
+	Set objClass = GetObject("winmgmts:{impersonationLevel=impersonate}!\\" & _ 
+	strComputer & "\root\cimv2:Win32_Service")
+	
+	' No Permissions
+	If Err.Number = -2147217405 then
+		CheckWMIAccess = 1
+		Exit Function
+	End If
+	
+	' No Such Computer
+	If Err.Number = 462 Then
+		CheckWMIAccess = 2
+		Exit Function
+	End If
+	
+	' No Problems
+	If Err.Number = 0 Then
+		CheckWMIAccess = 0
+		Exit Function
+	End If
+	
+	' Unknown WMI Error
+	CheckWMIAccess = 3
+	Exit Function
+End Function
+
+'******************************************************************************
+' Description	: Sends an Email from the Users Outlook to a Dest. Address
+' Input			: To Address, CC Address, BCC Address, Message Subject, Message Body, Attachment Path
+' Output		: NONE
+Sub SendMail(ToAddress, CCAddress, BCCAddress, MessageSubject, MessageBody, AttachmentPath, blnSend, blnDisplay)
+	Const olMail = 0
+	Dim objFSO, objOutlook, objMail
+	' Create a File System Object
+	Set objFSO = CreateObject("Scripting.FileSystemObject")
+	' Create the Outlook Object
+	Set objOutlook = CreateObject("Outlook.Application")
+	 ' Create a new Mail Item
+	Set objMail = objOutlook.CreateItem(olMail)
+
+	' Set Message Properties
+	With objMail
+		.To = ToAddress ' Set the To Address
+		.CC = CCAddress ' Set the CC Address
+		.BCC = BCCAddress ' Set the BCC Address
+		.Subject = MessageSubject ' Set the E-Mail Subject
+		.Body = MessageBody ' Set the E-Mail Body
+		' Check that The Attachment Path is not Empty
+		If Not AttachmentPath = "" Then
+			' Check that the Attachment File Exsits
+			If objFSO.FileExists(AttachmentPath) Then
+				.Attachments.Add AttachmentPath ' Add the Attachment
+			Else
+				' Inform the User that the File does not Exists
+				MsgBox "לא נמצא קובץ לצירוף", msgInformation, "צירוף קובץ להודעה"
+			End If
+		End If
+		If blnSend Then
+      .Send ' Send the Mail
+    ElseIf blnDisplay Then
+      .Display ' Display the Message - Don't Send
+    End If
+	End With	
+	
+	' Clean up
+	Set objMail = Nothing
+	Set objOutlook = Nothing
+	Set objFSO = Nothing
+End Sub
+
+'******************************************************************************
+' Description	: This Function Will return an Array of Events Between Dates
+'				  This Function Uses LogParser as the Event Log Collector.
+' Input			: Computer Name, Start Date, End Date, Event IDs Array, Event Log Name
+' Output		: Array with the Requested Events
+Function GetEvents(strComputer, dStartDate, dEndDate, arrEventIDs, evtLogName, blnGetDistinct)
+'----------------------------	
+' DataList Constants
+	Const adPersistXML = 1
+	Const adVarChar = 200
+	Const adInteger = 3
+	Const MaxCharacters = 500
+	Const adFldIsNullable = 32
+	Const adOpenStatic = 3
+	Const adLockOptimistic = 3
+	Const adCmdText = &H0001
+'----------------------------	
+	Dim strQuery, strEventIDsQuery 
+	Dim evtMessage, evtID
+	Dim arrEvents(), arrEvent
+	Dim colLoggedEvents, objEvent
+	Dim dtmStartDate, dtmEndDate
+	Dim oLogQuery
+	Dim oEVTInputFormat
+	Dim oCSVOutputFormat 
+	Dim DataList
+	Dim i
+	
+	' Create a LogParser Object
+	Set oLogQuery = CreateObject("MSUtil.LogQuery")
+	' Create a New Record Set
+	Set DataList = CreateObject("ADOR.Recordset")
+	' Create Input Format object
+	Set oEVTInputFormat = CreateObject("MSUtil.LogQuery.EventLogInputFormat")
+	oEVTInputFormat.direction = "BW"
+	
+	' Create Output Format object
+	Set oCSVOutputFormat = CreateObject("MSUtil.LogQuery.CSVOutputFormat")
+	oCSVOutputFormat.tabs = True
+	
+	' Set the Start Date - Today - 7 => Last Week
+	dtmStartDate = Year(dStartDate) & "-" & fFormat2Digits(Month(dStartDate)) & "-" & fFormat2Digits(Day(dStartDate)) & " 00:00:00"
+	' Set the End Date - Today
+	dtmEndDate = Year(dEndDate) & "-" & fFormat2Digits(Month(dEndDate)) & "-" & fFormat2Digits(Day(dEndDate)) & " 00:00:00"
+	
+	' Assemble the Event IDs
+	strEventIDsQuery = "(EventID = '" & Join(arrEventIds,"' OR EventID = '") & "')"
+	
+	' Create query text
+	strQuery = "SELECT TimeWritten, EventID, Message FROM " & evtLogName
+	strQuery = strQuery & " WHERE " & strEventIDsQuery
+	strQuery = strQuery & " AND TimeWritten > '" & dtmStartDate & "' "
+	strQuery = strQuery & " AND TimeWritten <= '" & dtmEndDate & "'"
+	
+	' Execute query
+	Set colLoggedEvents = oLogQuery.Execute(strQuery, oEVTInputFormat)
+	
+	' Create the DataList Table
+	DataList.Fields.Append "TimeWritten", adVarChar, MaxCharacters, adFldIsNullable
+	DataList.Fields.Append "EventID", adVarChar, MaxCharacters, adFldIsNullable
+	DataList.Fields.Append "EventMessage", adVarChar, MaxCharacters, adFldIsNullable
+	DataList.Open
+	' Sort the DataList by DateTime
+	DataList.Sort = "TimeWritten"
+	
+	' Check that there are any Events in the Collection
+	If colLoggedEvents.getColumnCount() > 0 Then
+		' Loop on Each Event in the collection
+		Do While Not colLoggedEvents.atEnd
+			Set objEvent = colLoggedEvents.getRecord
+			' Get the Event ID
+			evtID = objEvent.getValue("EventID")
+			' Get the Event Message
+			evtMessage = objEvent.getValue("Message")
+			If blnGetDistinct Then
+				' Define a Filter:
+				' If the Event ID and The Message are the Same 
+				DataList.Filter = "EventID = '" & evtID & "' AND EventMessage = '" & evtMessage & "'"
+				If Not (DataList.BOF) And Not(DataList.EOF) Then
+					' Move to the Beginning of the DataList
+					DataList.MoveFirst
+					Do While Not DataList.EOF
+						' Found a Matching Event - Delete this Event (Save Only the Last Event)
+						DataList.Delete 
+						' Get the Next Row
+						DataList.MoveNext
+					Loop
+				End If
+			End If
+			' Create a New Row in the Data List
+			DataList.AddNew
+			' Append Data to the new Row
+			DataList("TimeWritten") = FormatDateTime(objEvent.getValue("TimeWritten"),0)
+			DataList("EventID") = evtID
+			DataList("EventMessage") = evtMessage
+			' Update the New Row Data
+			DataList.Update
+			' Move to the Next Recordset
+			colLoggedEvents.moveNext
+		Loop
+		' Clear the Filter - If Any
+		DataList.Filter = ""
+		' Get the First Row
+		DataList.MoveFirst
+		' Re-Dim the Array as the Number of Events in the Dictionary
+		ReDim arrEvents(DataList.RecordCount-1)
+		' Init the Index
+		i = 0
+		' Copy the Events from the DataList to the Returned Array
+		Do Until DataList.EOF
+			ReDim arrEvent(2)
+			arrEvent(0) = DataList.Fields.Item(0)
+			arrEvent(1) = DataList.Fields.Item(1)
+			arrEvent(2) = DataList.Fields.Item(2)
+			
+			' Add the Event Array to the Return Array
+			arrEvents(i) = arrEvent
+			' Increment the Index
+			i = i + 1
+			' Get the next Row
+			DataList.MoveNext
+		Loop
+	Else
+		' Set Events Array to 0
+		ReDim arrEvents(0)
+	End If
+	
+	' Close the DataList
+	DataList.Close		
+	
+	' Return the Events Array
+	GetEvents = arrEvents
+
+End Function
+
+
+'******************************************************************************
+' Description	: Finds Objects in the Active Directory by Object Class and Search by Category
+' Input			: Object Name, Object Class, Search By (Category)
+' Output		: The ADsPath of the Object
+Function FindADObject(strObj, ObjClass, objSearchCat)
+	Const ADS_SCOPE_SUBTREE = 2
+	Dim objRootDSE,objConnection,objCommand,objRecordSet
+	Dim strDomainLdap
+	' Bind to the LDAP Root DSE
+	Set objRootDSE = GetObject ("LDAP://rootDSE")
+	' Get the Default Naming Context
+	strDomainLdap  = objRootDSE.Get("defaultNamingContext")
+	' Create an Active Directory  Connection
+	Set objConnection = CreateObject("ADODB.Connection")
+	Set objCommand = CreateObject("ADODB.Command")
+	' Set the AD Provider
+	objConnection.Provider = "ADsDSOObject"
+	' Open the Connection with the Proper Provider
+	objConnection.Open "Active Directory Provider"
+	' Set the Active Connection
+	Set objCommand.ActiveConnection = objConnection
+	' Set the Command Text
+	objCommand.CommandText = _
+		"SELECT AdsPath FROM 'LDAP://" & strDomainLdap & "' WHERE objectClass='" & ObjClass & "' and " & objSearchCat & "='" &_
+			strObj & "'"
+	' Set the Search Properties
+	objCommand.Properties("Page Size") = 1000
+	objCommand.Properties("Timeout") = 30
+	objCommand.Properties("Searchscope") = ADS_SCOPE_SUBTREE
+	objCommand.Properties("Cache Results") = False
+	' Execute the Command
+	Set objRecordSet = objCommand.Execute
+	' Check if no Results were found
+	If objRecordSet.RecordCount = 0 Then 
+		' Return 0
+		FindADObject= 0
+	Else 
+		' Found (at Least) One Result
+		' Re-Query to get the Real Results
+		objRecordSet.Requery
+		' Get the First Record
+		objRecordSet.MoveFirst
+		' Loop on all Records Found
+		Do Until objRecordSet.EOF
+			' Return the ADsPAth Value of the Record
+			FindADObject= objRecordSet.Fields("AdsPath").Value
+			' Get the Next Record
+			objRecordSet.MoveNext
+		Loop
+	End If 	
+End Function
+
+'******************************************************************************
+' Description	: Checks the AD Path Name for Special Characters and Replaces them with the Proper Escape Characters
+' Input			: AD string Path
+' Output		: AD string Path with Escape Characters
+Function CheckADPathName(strADPath)
+	Dim NewADPathName
+	' Save the Original Path - Dont Change the Original Path
+	NewADPathName = strADPath
+	' Check if there is a Double Qutes (")
+	If instr(strADPath,chr(34)) Then
+		' Insert an Escape Character \"
+		NewADPathName = Replace(strADPath,chr(34),"\" & chr(34))
+		' Return the New Path
+		CheckADPathName = NewADPathName
+	End If	
+	If instr(strADPath,"\" & chr(34)) Then
+		' Return the New Path
+		CheckADPathName = NewADPathName
+	End If
+	' Check if there is a Slash (/)
+	If instr(strADPath,"/") Then
+		' Insert an Escape Character \/
+		NewADPathName = Replace(strADPath,"/","\/")
+		' Return the New Path
+		CheckADPathName = NewADPathName
+	End If
+	' Return the New Path Set before
+	CheckADPathName = NewADPathName
+End Function
+
+'******************************************************************************
+' Description	: Read a Value from a Local Registry Path
+' Input			: Key Path
+' Output		: Value Data OR Error Number, On Error
+Function RegReadLocalValue(strValuePath)
+	Dim WshShell 
+	' Create the Wscript Shell Object
+	Set WshShell = CreateObject("WScript.Shell")
+	' Return the Value Data
+	RegReadLocalValue = WshShell.RegRead(strValuePath)
+End Function
+
+'******************************************************************************
+' Description	: Write a Value to a Local Registry Path
+' Input			: Value Path, Value Data, Value Data Type
+' Output		: Error Number
+Function RegWriteLocalValue(strValuePath, strValueData, strValueType)
+	Dim WshShell 
+	' Create the Wscript Shell Object
+	Set WshShell = CreateObject("WScript.Shell")
+	' Return the Error Code
+	RegWriteLocalValue = WshShell.RegWrite(strValuePath, strValueData, strValueType)
+End Function
+
+'******************************************************************************
+' Description	: Read a Value from a Remote Registry Path
+' Input			: Computer Name, Key Path
+' Output		: Value Data OR Error Number, On Error
+Function RegReadRemoteValue(strComputer, strValuePath)
+	Dim g_objReg 
+	Dim strHive, strSubKey, strValueName
+	Dim lngValueType, oValueData
+	Dim intError
+	Dim i
+	Set g_objReg = GetObject("WinMgmts:" _
+	    & "{impersonationlevel=impersonate}!\\" & strComputer & "/root/default:StdRegProv")
+	' Get the Hive text
+	strHive = Mid(strValuePath,1,InStr(strValuePath, "\")-1)
+	' Get the Sub Key Path
+	strSubKey = Mid(strValuePath, Len(strHive)+2, InStrRev(strValuePath, "\")-1-Len(strHive))
+	' Get the Value Name
+	strValueName = Mid(strValuePath, Len(strHive)+ Len(strSubKey)+2, Len(strValuePath))
+	' Run the Function and get the Error Code
+	intError = ReadValue(g_objReg, strHive, strSubKey, strValueName, lngValueType, oValueData)
+	' Check For Errors
+	If intError = 0 Then
+		' No Error - Return the Value Data
+		RegReadRemoteValue = oValueData
+	Else
+		' Error on Accessing the Remote Registry - Return Error Code
+		RegReadRemoteValue = "Error: " & intError
+	End If
+End Function
+
+'******************************************************************************
+' Description	: Write a Value to a Remote Registry Path
+' Input			: Computer Name, Value Path, Value Data, Value Data Type
+' Output		: Value Data OR Error Number, On Error
+Function RegWriteRemoteValue(strComputer, strValuePath, strValueData, strValueType)
+	Dim g_objReg 
+	Dim strHive, strSubKey, strValueName
+	Dim lngValueType, oValueData
+	Dim intError
+	Set g_objReg = GetObject("WinMgmts:" _
+	    & "{impersonationlevel=impersonate}!\\" & strComputer & "/root/default:StdRegProv")
+	' Get the Hive text
+	strHive = Mid(strValuePath,1,InStr(strValuePath, "\")-1)
+	' Get the Sub Key Path
+	strSubKey = Mid(strValuePath, Len(strHive)+2, InStrRev(strValuePath, "\")-1-Len(strHive))
+	' Get the Value Name
+	strValueName = Mid(strValuePath, Len(strHive)+ Len(strSubKey)+2, Len(strValuePath))
+	' Run the Function and get the Error Code
+	intError = WriteValue(g_objReg, strHive, strSubKey, strValueName, strValueType, strValueData)
+	' Check For Errors
+	If intError = 0 Then
+		' No Error - Return the Value Data
+		RegWriteRemoteValue = True
+	Else
+		' Error on Accessing the Remote Registry - Return Error Code
+		RegWriteRemoteValue = "Error: " & intError
+	End If
+End Function
+
+'******************************************************************************
+' Description	: Check if a Value from a Remote Registry Path Exsits
+' Input			: Computer Name, Value Path
+' Output		: True / False
+Function RegValueExsists(strComputer, strValuePath)
+	Dim g_objReg 
+	Dim strHive, strSubKey, strValueName
+	
+	Set g_objReg = GetObject("WinMgmts:" _
+	    & "{impersonationlevel=impersonate}!\\" & strComputer & "/root/default:StdRegProv")
+	' Get the Hive text
+	strHive = Mid(strValuePath,1,InStr(strValuePath, "\")-1)
+	' Get the Sub Key Path
+	strSubKey = Mid(strValuePath, Len(strHive)+2, InStrRev(strValuePath, "\")-1-Len(strHive))
+	' Get the Value Name
+	strValueName = Mid(strValuePath, Len(strHive)+ Len(strSubKey)+2, Len(strValuePath))
+	' Run the Function and Return the Result
+	RegValueExsists = ValueExists(g_objReg, strHive, strSubKey, strValueName)
+End Function
+
+'******************************************************************************
+' Description	: Check if a Key from a Remote Registry Path Exsits
+' Input			: Computer Name, Key Path
+' Output		: True / False
+Function RegKeyExsists(strComputer, strKeyPath)
+	Dim g_objReg 
+	Dim strHive, strSubKey, strKeyName
+	
+	Set g_objReg = GetObject("WinMgmts:" _
+	    & "{impersonationlevel=impersonate}!\\" & strComputer & "/root/default:StdRegProv")
+	' Get the Hive text
+	strHive = Mid(strValuePath,1,InStr(strValuePath, "\")-1)
+	' Get the Sub Key Path
+	strSubKey = Mid(strValuePath, Len(strHive)+2, InStrRev(strValuePath, "\")-1-Len(strHive))
+	' Get the Key Name
+	strKeyName = Mid(strValuePath, Len(strHive)+ Len(strSubKey)+2, Len(strValuePath))
+	' Run the Function and Return the Result
+	RegKeyExsists = KeyExists(strHive, strSubKey, strKeyName)
+End Function
+
+' *-*-*-*-*-*-*-*-*-*
+' Private Functions
+' *-*-*-*-*-*-*-*-*-*
+
+'******************************************************************************
+' Description   : Reads a Text File and Then Deletes it
+' Input         : Path to a Text File
+' Output        : The Text in the File
+Function ReadNDelete(strPath)
+'On Error Resume Next
+    Dim objFSO, objFile
+    Dim strText
+    
+    Set objFSO = CreateObject("Scripting.FileSystemObject") 
+    ' Open the Text File For Reading
+    Set objFile = objFSO.OpenTextFile(strPath, FOR_READING)
+    ' Read All the Text File
+    strText = objFile.ReadAll
+    ' Close the File
+    objFile.Close
+    Set objFile = Nothing
+    ' Delete the File
+    objFSO.DeleteFile strPath, True
+    ' Return the Text
+    ReadNDelete = strText
+End Function
+
+'******************************************************************************
+' Description	: This Function Will Find a RegEx Pattern on the Input Text
+' 				  Function will Return an Array of Results.
+' Input			: Text to run RegEx on, RegEx Pattern
+' Output		: Array of Results
+Function RegExFind(strText,strPattern)
+	Dim regEx
+	Dim Match, Matches, SubMatch
+	Dim objDictionary 
+	Set regEx = New RegExp
+	' Set RegEx Properties
+	regEx.IgnoreCase = True
+	regEx.Global = True
+	regEx.Pattern = strPattern
+	' Create a Dictionary Object
+	Set objDictionary = CreateObject("Scripting.Dictionary")
+	' Execute the Regex Command and Save the Matches
+	Set Matches = regEx.Execute(strText)
+	' Loop Each Match for Results
+	For Each Match In Matches
+		' Loop Each Match For Submatches
+		For Each SubMatch In Match.Submatches
+			' Check that the Submatch is not in the Dictionary
+			If Not objDictionary.Exists(Trim(SubMatch)) Then
+				' Add Submatch to the Dictionary
+				objDictionary.Add Trim(SubMatch),Trim(SubMatch)
+			End If
+		Next
+	Next
+	' Return an Array of Dictionary Keys
+	RegExFind = objDictionary.Keys
+End Function
+
+'******************************************************************************
+' Description	: This Function Will Format a Number to 2 Digits Format
+' Input			: Number
+' Output		: Formated Number
+Function fFormat2Digits(strNum)
+	If Len(strNum) = 1 Then
+		fFormat2Digits = "0" & strNum
+	ElseIf Len(strNum) = 0 Then
+		fFormat2Digits = "00"
+	Else
+		fFormat2Digits = strNum
+	End If
+End Function
+
+'******************************************************************************
+' Description	: Converts String Registry Constant to a Hex Registry Constant
+' Input			: String Registry Constant
+' Output		: Hex Registry Constant
+Function strToRegConst(strRegConst)
+	' Check the Input Value
+	Select Case StrRegConst
+    Case "HKEY_CLASSES_ROOT"
+      strToRegConst = HKEY_CLASSES_ROOT
+		Case "HKCR"
+			strToRegConst = HKEY_CLASSES_ROOT
+		Case "ClassesRoot"
+			strToRegConst = HKEY_CLASSES_ROOT
+		Case "HKEY_LOCAL_MACHINE"
+      strToRegConst = HKEY_LOCAL_MACHINE
+		Case "HKLM"
+			strToRegConst = HKEY_LOCAL_MACHINE
+		Case "LocalMachine"
+			strToRegConst = HKEY_LOCAL_MACHINE
+		Case "HKEY_CURRENT_USER"
+			strToRegConst = HKEY_CURRENT_USER
+		Case "HKCU"
+			strToRegConst = HKEY_CURRENT_USER
+		Case "CurrentUser"
+			strToRegConst = HKEY_CURRENT_USER
+		Case "HKEY_USERS"
+			strToRegConst = HKEY_USERS		
+		Case "HKU"			
+			strToRegConst = HKEY_USERS
+		Case "Users"
+			strToRegConst = HKEY_USERS
+		Case "DWORD"
+			strToRegConst = REG_DWORD
+		Case "String"
+			strToRegConst = REG_SZ
+		Case "Binary"
+			strToRegConst = REG_BINARY
+		Case "ExString"
+			strToRegConst = REG_EXPAND_SZ
+		Case "MulString"
+			strToRegConst = REG_MULTI_SZ
+	End Select
+End Function
+
+'******************************************************************************
+' Description	: Read a Value from a Rgistry Path
+' Input			: Hive,Sub Key Path , Value Name
+' Output		: Value Type (by Referance), Value Data(by Referance), Read Error Code (0 - Success, Else Fail)
+Function ReadValue(objReg, ByVal lngHive, ByVal strSubKey, ByVal strValueName, ByRef lngValueType, ByRef vntValueData)
+  Dim lngRC, arrNames, arrTypes, lngN
+' Wrapper for the StdRegProv class Get<xxx>Value methods. With this function,
+' the calling code doesn't need to know the registry data type beforehand. The
+' lngHive, strSubKey, and strValueName parameters are input parameters that
+' specify the data to retrieve, and lngValueType and vntValueData are output
+' parameters that will contain the retrieved value type and data. Returns 0 for
+' success, or non-zero failure.
+  lngValueType = 0
+  vntValueData = Null
+  lngHive = strToRegConst(lngHive) ' Convert Hive to Registry Constant
+  lngRC = objReg.EnumValues(lngHive, strSubKey, arrNames, arrTypes)
+  If lngRC = 0 Then
+    For lngN = 0 To UBound(arrNames)
+      If LCase(arrNames(lngN)) = LCase(strValueName) Then
+        Select Case arrTypes(lngN)
+          Case REG_SZ
+            lngRC = objReg.GetStringValue(lngHive, strSubKey, arrNames(lngN), vntValueData)
+            lngValueType = REG_SZ
+            Exit For
+          Case REG_EXPAND_SZ
+            lngRC = objReg.GetExpandedStringValue(lngHive, strSubKey, arrNames(lngN), vntValueData)
+            lngValueType = REG_EXPAND_SZ
+            Exit For
+          Case REG_BINARY
+            lngRC = objReg.GetBinaryValue(lngHive, strSubKey, arrNames(lngN), vntValueData)
+            lngValueType = REG_BINARY
+            Exit For
+          Case REG_DWORD
+            lngRC = objReg.GetDWORDValue(lngHive, strSubKey, arrNames(lngN), vntValueData)
+            lngValueType = REG_DWORD
+            Exit For
+          Case REG_MULTI_SZ
+            lngRC = objReg.GetMultiStringValue(lngHive, strSubKey, arrNames(lngN), vntValueData)
+            lngValueType = REG_MULTI_SZ
+            Exit For
+        End Select
+      End If
+    Next
+  End If
+  ReadValue = lngRC
+End Function
+
+'******************************************************************************
+' Description	: Writes a Value to a Registry Path
+' Input			: Hive, Sub Key Path, Value Name, Value Type, Value Data
+' Output		: Write Error Code (0 - Success, Else Fail)
+Function WriteValue(objReg, ByVal lngHive, ByVal strSubKey, ByVal strValueName, ByVal lngValueType, ByVal vntValueData)
+  Dim lngRC
+' Wrapper for the StdRegProv class Set<xxx>Value methods. Using this function,
+' the calling code can specify the desired data type in the lngValueType
+' parameter and the function will execute the corresponding WMI method. Note
+' that with REG_BINARY and REG_MULTI_SZ, the vntValueData variable must contain
+' an array. Returns 0 for success, or non-zero for failure.
+  lngRC = 13
+  lngHive = strToRegConst(lngHive) ' Convert Hive to Registry Constant
+  lngValueType = strToRegConst(lngValueType) ' Convert Type to Registry Constant
+  Select Case lngValueType
+    Case REG_SZ
+      lngRC = objReg.SetStringValue(lngHive, strSubKey, strValueName, vntValueData)
+    Case REG_EXPAND_SZ
+      lngRC = objReg.SetExpandedStringValue(lngHive, strSubKey, strValueName, vntValueData)
+    Case REG_BINARY
+      If VarType(vntValueData) = vbArray Or vbVariant Then _
+        lngRC = objReg.SetBinaryValue(lngHive, strSubKey, strValueName, vntValueData)
+    Case REG_DWORD
+      lngRC = objReg.SetDWORDValue(lngHive, strSubKey, strValueName, vntValueData)
+    Case REG_MULTI_SZ
+      If VarType(vntValueData) = vbArray Or vbVariant Then _
+        lngRC = objReg.SetMultiStringValue(lngHive, strSubKey, strValueName, vntValueData)
+  End Select
+  WriteValue = lngRC
+End Function
+
+'******************************************************************************
+' Description	: Checks if a Registry Key Exists
+' Input			: Hive, SubKey, ValueName
+' Output		: (bool) Key Exists
+Function KeyExists(objReg, ByVal lngHive, ByVal strSubKey, ByVal strKeyName)
+  Dim blnExists, lngRC, arrSubKeys, lngN
+' Returns True if the specified registry subkey exists. Works by calling the
+' StdRegProv EnumKey method and iterating the returned array of subkey names.
+  blnExists = False
+  lngHive = strToRegConst(lngHive) ' Convert Hive to Registry Constant
+  lngRC = objReg.EnumKey(lngHive, strSubKey, arrSubKeys)
+  If lngRC = 0 Then
+  	If Not strKeyName = "" Then
+	    For lngN = 0 To UBound(arrSubKeys)
+	      blnExists = LCase(arrSubKeys(lngN)) = LCase(strKeyName)
+	      If blnExists Then Exit For
+	    Next
+    End If
+  End If
+  KeyExists = blnExists
+End Function
+
+'******************************************************************************
+' Description	: Check if a Registry Value Exists
+' Input			: Hive, SubKey, ValueName
+' Output		: (bool) Value Exists
+Function ValueExists(objReg, ByVal lngHive, ByVal strSubKey, ByVal strValueName)
+  Dim blnExists, lngRC, arrSubKeys, lngN
+  Dim arrValueNames,arrValueTypes
+' Returns True if the specified registry Value exists. Works by calling the
+' StdRegProv EnumValues method and iterating the returned array of Value names.
+  blnExists = False
+  lngHive = strToRegConst(lngHive) ' Convert Hive to Registry Constant
+  lngRC = objReg.EnumValues(lngHive, strSubKey, arrValueNames, arrValueTypes)
+  If lngRC = 0 Then
+  	If Not strValueName = "" Then
+	    For lngN = 0 To UBound(arrValueNames)
+	      blnExists = LCase(arrValueNames(lngN)) = LCase(strValueName)
+	      If blnExists Then Exit For
+	    Next
+    End If
+  End If
+  ValueExists = blnExists
+End Function
+
+]]>
+</script>
+
+</component>
+
+</package>
+
