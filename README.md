@@ -1,2 +1,2 @@
 # VBS-Toolkit
- VBS Toolkit with useful read to use functions
+ VBS Toolkit with useful ready to use functions
