@@ -92,8 +92,8 @@
     <parameter name="strADPath"/>
   </method>        
 
-  <method name="getEnvPath">
-    <parameter name="strEnv"/>
+  <method name="GetEnvPath">
+    <parameter name="strEnvPath"/>
   </method>          
 
   <method name="SendMail">
@@ -241,7 +241,7 @@
 ' Description	: Converts String Environment Constants to the Environment Path Requested
 ' Input			: String Environment Path Enclosed in %<ENV_PATH>%
 ' Output		: The Environment Real Path
-Function getEnvPath(strEnv)
+Function GetEnvPath(strEnvPath)
 	Dim WshShell
 	Dim objRegEx
 	Dim colMatches
@@ -251,12 +251,12 @@ Function getEnvPath(strEnv)
 	Set objRegEx = CreateObject("VBScript.RegExp")
 	objRegEx.Global = True   
 	objRegEx.Pattern = "%(.*)%"
-	Set colMatches = objRegEx.Execute(strEnv)
+	Set colMatches = objRegEx.Execute(strEnvPath)
 	
 	' Check that The Path Contains Env Consts	
 	If colMatches.Count > 0 Then
 	    For Each strMatch in colMatches
-	    	strEnv = Replace(strEnv,strMatch,WshShell.ExpandEnvironmentStrings(strMatch))
+	    	strEnvPath = Replace(strEnvPath,strMatch,WshShell.ExpandEnvironmentStrings(strMatch))
 	   	Next
 	Else
 		' Return The Path Unchanged
@@ -264,7 +264,7 @@ Function getEnvPath(strEnv)
 	' Clean Up
 	Set objRegEx = Nothing	
 	Set WshShell = Nothing	
-	getEnvPath = strEnv
+	GetEnvPath = strEnvPath
 End Function
 
 '******************************************************************************
