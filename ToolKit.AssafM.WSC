@@ -269,7 +269,7 @@ End Function
 
 '******************************************************************************
 ' Description	: Write appended data to text file.
-'				  Creates the File if it Does Not Exsits.
+'				  Creates the File if it Does Not exists.
 ' Input			: File Path, Output Text, (Boolean) Write One Empty Line?
 ' Output		: Append the Output Text to the Log File
 Sub WriteTextFile(strFileName, strOutput, blnWriteEmptyLines)
@@ -329,7 +329,7 @@ End Function
 
 
 '******************************************************************************
-' Description   : Runs a command in the Windows Shelll and Returns its Output
+' Description   : Runs a command in the Windows Shell and Returns its Output
 ' Input         : Command String
 ' Output        : The Command Output as seen on Windows Shell (CMD)
 Function RunLocalCommand(strCommand)
@@ -348,7 +348,7 @@ Function RunLocalCommand(strCommand)
 End Function
 
 '******************************************************************************
-' Description	:  This Function Runs a Remote Command Using WMI on a Remote Computer
+' Description	: This Function Runs a Remote Command Using WMI on a Remote Computer
 ' Input			: Computer Name, Command to Run
 ' Output		: Process ID of the Command
 Function RunRemoteCommand(strComputer,strCommand)
@@ -462,7 +462,7 @@ Sub SendMail(ToAddress, CCAddress, BCCAddress, MessageSubject, MessageBody, Atta
 		.Body = MessageBody ' Set the E-Mail Body
 		' Check that The Attachment Path is not Empty
 		If Not AttachmentPath = "" Then
-			' Check that the Attachment File Exsits
+			' Check that the Attachment File exists
 			If objFSO.FileExists(AttachmentPath) Then
 				.Attachments.Add AttachmentPath ' Add the Attachment
 			Else
@@ -785,7 +785,7 @@ Function RegWriteRemoteValue(strComputer, strValuePath, strValueData, strValueTy
 End Function
 
 '******************************************************************************
-' Description	: Check if a Value from a Remote Registry Path Exsits
+' Description	: Check if a Value from a Remote Registry Path exists
 ' Input			: Computer Name, Value Path
 ' Output		: True / False
 Function RegValueExsists(strComputer, strValuePath)
@@ -805,7 +805,7 @@ Function RegValueExsists(strComputer, strValuePath)
 End Function
 
 '******************************************************************************
-' Description	: Check if a Key from a Remote Registry Path Exsits
+' Description	: Check if a Key from a Remote Registry Path exists
 ' Input			: Computer Name, Key Path
 ' Output		: True / False
 Function RegKeyExsists(strComputer, strKeyPath)
