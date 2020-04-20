@@ -56,7 +56,7 @@ VBS Toolkit with useful ready to use functions
 ## How to use
 ### Create an instance
 You can call the toolkit from other VBS scripts like any other CPM object.
-If you [register the toolkit on your host](Register-the-Toolkit-on-your-machine), you can call it using for example:
+If you [*register the toolkit on your host*](#Register-the-Toolkit-on-your-machine), you can call it using for example:
 ```vbs
 Set oComponent = CreateObject("Toolkit.AssafM.wsc")
 ```
@@ -74,6 +74,3 @@ regsvr32 ToolKit.AssafM.WSC
 
 ## License
 This repository is licensed under Apache License 2.0 - see [`LICENSE`](LICENSE) for more details.
-=======
- VBS Toolkit with useful ready to use functions
->>>>>>> 88812c7f575af58f7ac04bb497055b5eaa0975d5
